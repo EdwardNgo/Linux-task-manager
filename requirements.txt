@@ -1,0 +1,9 @@
+numpy==1.18.4
+packaging==20.4
+pyparsing==2.4.7
+PyQt5==5.15.0
+PyQt5-sip==12.8.0
+PythonQwt==0.5.5
+sip==5.3.0
+six==1.15.0
+toml==0.10.1

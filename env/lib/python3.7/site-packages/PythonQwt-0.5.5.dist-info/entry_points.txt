@@ -1,0 +1,3 @@
+[gui_scripts]
+PythonQwt-tests-py2 = qwt.tests:run [tests]
+

@@ -1,0 +1,45 @@
+Metadata-Version: 2.0
+Name: PythonQwt
+Version: 0.5.5
+Summary: Qt plotting widgets for Python
+Home-page: https://github.com/PierreRaybaut/PythonQwt
+Author: Pierre Raybaut
+Author-email: pierre.raybaut@gmail.com
+License: UNKNOWN
+Platform: Any
+Classifier: Development Status :: 3 - Alpha
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Classifier: Topic :: Software Development :: Widget Sets
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Requires-Dist: NumPy (>=1.3)
+Provides-Extra: Doc
+Requires-Dist: Sphinx (>=1.1); extra == 'Doc'
+Provides-Extra: Tests
+Requires-Dist: guidata (>=1.7.0); extra == 'Tests'
+
+The ``PythonQwt`` package is a 2D-data plotting library using Qt graphical 
+user interfaces for the Python programming language. It is compatible with 
+both ``PyQt4`` and ``PyQt5`` (``PySide`` is currently not supported but it
+could be in the near future as it would "only" requires testing to support 
+it as a stable alternative to PyQt).
+
+The ``PythonQwt`` project was initiated to solve -at least temporarily- the 
+obsolescence issue of `PyQwt` (the Python-Qwt C++ bindings library) which is 
+no longer maintained. The idea was to translate the original Qwt C++ code to 
+Python and then to optimize some parts of the code by writing new modules 
+based on NumPy and other libraries.
+
+The ``PythonQwt`` package consists of a single Python package named `qwt` 
+which is a pure Python implementation of Qwt C++ library with some 
+limitations: efforts were concentrated on basic plotting features, leaving 
+higher level features to the `guiqwt` library.
+
