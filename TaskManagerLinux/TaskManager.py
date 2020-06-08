@@ -5,7 +5,8 @@ import MainAppGUI
 from ProcStat import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-
+from NetStat import *
+from DiskStat import *
 # from PyQt5.QtChart import QChart, QChartView, QPieSeries, QPieSlice
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtCore import Qt
@@ -51,7 +52,7 @@ class TaskManager(QtWidgets.QMainWindow, MainAppGUI.Ui_MainWindow):
         self.tableWidget_process.verticalHeader().setVisible(False)
         self.tableWidget_process.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tableWidget_process.setHorizontalHeaderLabels(
-            ["PID".center(10), "PPID".center(10), "Name".center(38), "St.", "Pri.".center(7), "Memory(KB)".center(15)])
+            ["PID".center(10), "PPID".center(10), "Name".center(38), "St.", "Pri.".center(7), "VIRT".center(15)])
         self.tableWidget_process.resizeColumnsToContents()
         self.tableWidget_process.setSortingEnabled(True)
 
@@ -63,6 +64,8 @@ class TaskManager(QtWidgets.QMainWindow, MainAppGUI.Ui_MainWindow):
 
         self.procStat = ProcStat()
         self.statInfo = {}
+        # self.diskStat = DiskStat()
+        # self.netStat = NetStat()
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
@@ -82,20 +85,15 @@ class TaskManager(QtWidgets.QMainWindow, MainAppGUI.Ui_MainWindow):
         pass
 
     def __displayCPU(self):
-        # try:
-        #     x = numpy.arange(0, 60, 1)
-        #     y = x * 0
-        #     curve = QwtPlotCurve()
-        #     curve.setData(x, y)
-        #     curve.attach(self.qwtPlot_CPU)
-        # except:
-        #     print("Exception: TaskMgr.__displaySources()")
-        #     print(sys.exc_info())
-
         self.progressBar.setProperty("value",float(self.statInfo["CPUUsage"][0]["usage"])*100)
         self.progressBar_2.setProperty("value",float(self.statInfo["CPUUsage"][1]["usage"])*100)
         self.progressBar_3.setProperty("value",float(self.statInfo["CPUUsage"][2]["usage"])*100)
         self.progressBar_4.setProperty("value",float(self.statInfo["CPUUsage"][3]["usage"])*100)
+        # print(self.statInfo["CPUTotal"])
+        self.label_ctx_switch.setText(str(self.statInfo["CPUTotal"]["ctx_switches"]))
+        self.label_interrupts.setText(str(self.statInfo["CPUTotal"]["interrupts"]))
+        self.label_soft_interrupts.setText(str(self.statInfo["CPUTotal"]["soft_interrupts"]))
+        self.label_sys_call.setText(str(self.statInfo["CPUTotal"]["sys_call"]))
 
     def __displayProcs(self):
         try:
@@ -120,23 +118,32 @@ class TaskManager(QtWidgets.QMainWindow, MainAppGUI.Ui_MainWindow):
                 self.tableWidget_process.setItem(x, 4, QTableWidgetItem(self.statInfo["ProcInfos"][x]["priority"]))
 
                 item = QTableWidgetItem()
-                item.setData(QtCore.Qt.DisplayRole, int(self.statInfo["ProcInfos"][x]["memory"]) / 1024)
+                item.setData(QtCore.Qt.DisplayRole, int(self.statInfo["ProcInfos"][x]["virt"]) / 1024)
                 self.tableWidget_process.setItem(x, 5, item)
 
                 item = QTableWidgetItem()
-                item.setData(QtCore.Qt.DisplayRole, int(self.statInfo["ProcInfos"][x]["res"]) / 1024)
+                item.setData(QtCore.Qt.DisplayRole, int(self.statInfo["ProcInfos"][x]["shr"]) / 1024)
                 self.tableWidget_process.setItem(x, 6, item)
 
                 item = QTableWidgetItem()
-                item.setData(QtCore.Qt.DisplayRole, int(self.statInfo["ProcInfos"][x]["shr"]) / 1024)
+                item.setData(QtCore.Qt.DisplayRole, int(self.statInfo["ProcInfos"][x]["res"]) / 1024)
                 self.tableWidget_process.setItem(x, 7, item)
+
+                item = QTableWidgetItem()
+                item.setData(QtCore.Qt.DisplayRole, self.statInfo["ProcInfos"][x]["username"])
+                self.tableWidget_process.setItem(x, 8, item)
+
+                item = QTableWidgetItem()
+                item.setData(QtCore.Qt.DisplayRole, str(round(float(self.statInfo["ProcInfos"][x]["mem_percent"]),2)) + "%")
+                self.tableWidget_process.setItem(x, 9, item)
         except:
             print("Exception: TaskMgr.__displayProcs()")
             print(sys.exc_info())
-        self.label_total.setText(str(self.statInfo["ProcCount"]["Total"]))
+        self.label_total_process.setText(str(self.statInfo["ProcCount"]["Total"]))
         self.label_runable.setText(str(self.statInfo["ProcCount"]["Runnable"]))
         self.label_sleep.setText(str(self.statInfo["ProcCount"]["Sleeping"]))
         self.label_defunct.setText(str(self.statInfo["ProcCount"]["Defunct"]))
+        self.label_total_thread.setText(str(self.statInfo["ProcCount"]["Thread"]))
 
 
     def __displayModules(self):
@@ -160,72 +167,55 @@ class TaskManager(QtWidgets.QMainWindow, MainAppGUI.Ui_MainWindow):
             print(sys.exc_info())
 
     def __displayMem(self):
-        pass
-        # series = QPieSeries()
-        # series.append("Python", 80)
-        # series.append("C++", 70)
-        # series.append("Java", 50)
-        # series.append("C#", 40)
-        # series.append("PHP", 30)
+        free_mem = float(self.statInfo["MemoryInfo"]['MemFree'].split(' ')[0])
+        total_mem = float(self.statInfo["MemoryInfo"]['MemTotal'].split(' ')[0])
+        usage_mem = total_mem - free_mem
+        usage_percent = round((usage_mem/total_mem)*100.0)
+        self.label_MemValue.setText(str(usage_mem) + " KB " +" used ( " + str(usage_percent) +" %)")
 
-        # slice = QPieSlice()
-        # slice = series.slices()[2]
-        # slice.setExploded(True)
-        # slice.setLabelVisible(True)
-        # slice.setPen(QPen(Qt.darkGreen, 2))
-        # slice.setBrush(Qt.green)
+        free_swap = float(self.statInfo["MemoryInfo"]['SwapFree'].split(' ')[0])
+        total_swap = float(self.statInfo["MemoryInfo"]['SwapTotal'].split(' ')[0])
+        usage_swap = total_swap - free_swap
+        usage_swap_percent = (usage_swap/total_swap)*100.0
+        self.label_SwapValue.setText(str(usage_swap) + " KB" +" used ( " + str(usage_swap_percent) +" %)")
 
-        # slice = QPieSlice()
-        # slice = series.slices()[2]
-        # slice.setExploded(True)
-        # slice.setLabelVisible(True)
-        # slice.setPen(QPen(Qt.darkGreen, 2))
-        # slice.setBrush(Qt.green)
-        # slice = series.slices()[2]
+    def __displayDiskInfo(self):
+        self.label_total_reads.setText(str(self.diskInfo["IOCounters"]["total_reads"]))
+        self.label_total_writes.setText(str(self.diskInfo["IOCounters"]["total_writes"]))
+        self.label_read.setText(str(self.diskInfo["IOCounters"]["read_bytes"]))
+        self.label_write.setText(str(self.diskInfo["IOCounters"]["write_bytes"]))
+        self.label_diskusage.setText(str(self.diskInfo["DiskInfo"]["usage"])+"GB")
+        self.label_free.setText(str(self.diskInfo["DiskInfo"]["free"])+"GB")
 
-        # chart = QChart()
-        # chart.legend().hide()
-        # chart.addSeries(series)
-        # chart.createDefaultAxes()
-        # chart.setAnimationOptions(QChart.SeriesAnimations)
-        # chart.setTitle("Pie Chart Example")
-
-        # chart.legend().setVisible(True)
-        # chart.legend().setAlignment(Qt.AlignBottom)
-        # chart.createDefaultAxes()
-
-        # chart.setAnimationOptions(QChart.SeriesAnimations)
-        # chart.setTitle("Pie Chart Example")
-
-        # chartview = QChartView(chart)
-
-        # self.setCentralWidget(chartview)
-        # try:
-        #     x = numpy.arange(0, 60, 1)
-        #     y = x * 0
-        #     curve = QwtPlotCurve()
-        #     curve.setData(x, y)
-        #     curve.attach(self.qwtPlot_memory)
-        # except:
-        #     print("Exception: TaskMgr.__displaySources()")
-        #     print(sys.exc_info())
-
+    def __displayNet(self):
+        self.label_bytes_sent.setText(str(self.netInfo["NetIOCounters"]["bytes_sent"]))
+        self.label_bytes_recv.setText(str(self.netInfo["NetIOCounters"]["bytes_recv"]))
+        self.label_packets_sent.setText(str(self.netInfo["NetIOCounters"]["packets_sent"]))
+        self.label_packets_recv.setText(str(self.netInfo["NetIOCounters"]["packets_recv"]))
 
     def __kill(self):
         rowIndex = self.tableWidget_process.currentRow()
+        print("kill " + str(self.tableWidget_process.item(rowIndex, 0).data(0)))
         os.system("kill " + str(self.tableWidget_process.item(rowIndex, 0).data(0)))
 
     def refresh(self):
         try:
+            #procStat
             self.procStat.refresh()
             self.statInfo = {}
             self.statInfo.update({"CPUInfo":self.procStat.getCPUInfo()})
             self.statInfo.update({"MemoryInfo":self.procStat.getMemInfo()})
             self.statInfo.update({"OSInfo":self.procStat.getOSInfo()})
-            self.statInfo.update({"CPUUsage":self.procStat.getCPUStat()})
+
+            cpuInfo_stat = self.procStat.getCPUStat()
+            # print(cpuInfo_stat[1])
+            self.statInfo.update({"CPUUsage":cpuInfo_stat[0]})
+            self.statInfo.update({"CPUTotal":cpuInfo_stat[1]})
+
             procInfo_stat = self.procStat.getProcInfos()
             self.statInfo.update({"ProcInfos":procInfo_stat[0]})
             self.statInfo.update({"ProcCount":procInfo_stat[1]})
+
             self.modInfo_stat = self.procStat.getModuleInfos()
             self.statInfo.update({"ModuleInfos":self.modInfo_stat[0]})
             self.__displayInfo()
@@ -233,6 +223,19 @@ class TaskManager(QtWidgets.QMainWindow, MainAppGUI.Ui_MainWindow):
             self.__displayProcs()
             self.__displayModules()
             self.__displayMem()
+            # print(self.statInfo)
+            #diskStat
+            self.diskStat = DiskStat()
+            self.diskInfo = {}
+            self.diskInfo.update({"DiskInfo":self.diskStat.getDiskInfo()})
+            self.diskInfo.update({"IOCounters":self.diskStat.getIOCounters()})
+            self.__displayDiskInfo()
+
+            #netStat
+            self.netStat = NetStat()
+            self.netInfo = {}
+            self.netInfo.update({"NetIOCounters":self.netStat.getNetIOCounters()})
+            self.__displayNet()
         except:
             print("Exception: TaskManager.refresh()")
             print(sys.exc_info())

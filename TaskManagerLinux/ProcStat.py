@@ -1,4 +1,5 @@
 import os, sys, glob, time
+import psutil
 
 class ProcStat():
     def __init__(self):
@@ -17,6 +18,7 @@ class ProcStat():
             self.fileCPUStat = open("/proc/stat")
             self.fileMeminfo = open("/proc/meminfo")
             self.fileModinfo = open("/proc/modules")
+            # self.fileDiskinfo = open("proc/")
 
             self.fileProcs   = []
             globFiles = glob.glob("/proc/*")
@@ -153,9 +155,21 @@ class ProcStat():
         runnable  = 0
         sleeping  = 0
         defunct   = 0
+        total_thread = 0
         for x in range(0, len(self.strProcs)):
             procinfo = self.strProcs[x].split()
-            procinfos += [{"pid":procinfo[0], "name":procinfo[1][1:-1].ljust(20), "status":procinfo[2],"ppid":procinfo[3], "priority":procinfo[17], "memory":procinfo[22],"res":procinfo[8],"shr":procinfo[10]}]
+            try:
+                p = psutil.Process(int(procinfo[0]))#pid
+                # cpu_percent = p.cpu_percent()
+                username = p.username()
+                meminfo = p.memory_info()
+                mem_percent = p.memory_percent()
+                total_thread += p.num_threads()
+
+                # print(cpu_percent)
+                procinfos += [{"pid":procinfo[0], "name":procinfo[1][1:-1].ljust(20), "status":procinfo[2],"ppid":procinfo[3], "priority":procinfo[17], "virt":meminfo[1],"username":username,"res":meminfo[0],"shr":meminfo[2],"mem_percent":mem_percent}]
+            except:
+                procinfos += [{"pid":procinfo[0], "name":procinfo[1][1:-1].ljust(20), "status":procinfo[2],"ppid":procinfo[3], "priority":procinfo[17], "virt":"0","username":"0","res":0,"shr":0,"mem_percent":0}]
             total += 1
             if procinfo[2] == "R":
                 runnable += 1
@@ -167,10 +181,25 @@ class ProcStat():
                 defunct += 1
                 continue
 
-        procstat = {"Total":total, "Runnable":runnable, "Sleeping":sleeping, "Defunct":defunct}
+        procstat = {"Total":total, "Runnable":runnable, "Sleeping":sleeping, "Defunct":defunct,"Thread":total_thread}
 
         return [procinfos, procstat]
+    # def getProcInfosDetailed(self):
+    #     if len(self.strProcs) < 2:
+    #         self.__readFiles()
 
+    #     procinfos = []
+    #     # total     = 0
+    #     # runnable  = 0
+    #     # sleeping  = 0
+    #     # defunct   = 0
+    #     for x in range(0, len(self.strProcs)):
+    #         procinfo = self.strProcs[x].split()
+    #         # print(procinfo)
+    #         p = psutil.Process(int(procinfo[0]))#pid
+    #         cpu = p.cpu_percent(interval = 1.0)
+    #         # print(cpu)
+    #     return procinfos
 
     def getModuleInfos(self):
         if len(self.strModules) < 2:
@@ -217,7 +246,10 @@ class ProcStat():
             cpustats += [{listTime[0]:str(sum([int(i) for i in listTime[1:-1]])),
                           "busy":str(sum([int(i) for i in listTime[1:4]])),
                           "usage":str(cpuUsage)}]
-        return cpustats
+
+        total_util = psutil.cpu_stats()
+        totalcpustats ={"ctx_switches":total_util[0],"interrupts":total_util[1],"soft_interrupts":total_util[2],"sys_call":total_util[3]}
+        return [cpustats,totalcpustats]
 
 
     def refresh(self):
@@ -232,9 +264,11 @@ if __name__ == "__main__":
     osinfo   = procRead.getOSInfo()
     procinfo = procRead.getProcInfos()
     modinfo  = procRead.getModuleInfos()
-    cpustat  = procRead.getCPUStat()
+    cpustat,totalcpustats  = procRead.getCPUStat()
+    # test = procRead.getProcInfosDetailed()
     # print(cpustat)
+    # print(totalcpustats)
     # # print(osinfo)
     print(procinfo)
-    # print(meminfo)
+    # print(test)
     # print(cpustat)
